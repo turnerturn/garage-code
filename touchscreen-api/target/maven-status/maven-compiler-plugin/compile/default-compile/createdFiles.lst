@@ -1,0 +1,5 @@
+sandbox/Application.class
+sandbox/TouchscreenVariableUploader.class
+sandbox/TouchscreenMemoryMessage.class
+sandbox/TouchscreenVariablePoller.class
+sandbox/TouchscreenVariableDownloader.class
