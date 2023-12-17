@@ -1,5 +1,9 @@
+sandbox/TouchscreenVariable.class
+sandbox/ModbusClient.class
+sandbox/TouchscreenMemoryMessage.class
+sandbox/TouchscreenMemory.class
 sandbox/Application.class
 sandbox/TouchscreenVariableUploader.class
-sandbox/TouchscreenMemoryMessage.class
-sandbox/TouchscreenVariablePoller.class
 sandbox/TouchscreenVariableDownloader.class
+sandbox/TouchscreenController.class
+sandbox/DisplayAssistant.class
