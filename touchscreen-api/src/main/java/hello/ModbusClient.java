@@ -1,28 +1,31 @@
-package sandbox;
+package hello;
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Value;
-//import IllegalArgumentException;
 
 @Component
 public class ModbusClient{
-    private String ip;
-    private Integer port;
+    private final String ip= "localhost";
+    private final Integer port = 9050;
     
-
-    //constructor
-    public ModbusClient(){
-        System.out.println("ModbusClient constructor");
+    //required args constructor
+    public ModbusClient(String ip, Integer port){
+        //this.ip = ip;
+        //this.port = port;
     }
-
-
-    public  byte[] convertLongBitsStringToBytes(String value){
-        return new byte[4];
+    
+    public void writeLongBitsStringToRegisters(int offset,String value){
+       
     }
-    public  byte[] convertBitsStringToBytes(String value){
-        return new byte[2];
+    public void writeStringToRegisters(int offset, String value){
+       
     }
-    public byte[] convertStringToBytes(String value){
-        return new byte[20];
+    public String readStringFromRegisters(int offset, int count){
+       return "";
+    }
+    public String readBitsFromRegisters(int offset, int count){
+       return "";
+    }
+    public void writeSixteenBitsStringToRegisters(int offset,String value){
+        
     }
 
 
