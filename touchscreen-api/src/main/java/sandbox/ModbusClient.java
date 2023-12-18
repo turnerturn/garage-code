@@ -3,29 +3,27 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ModbusClient{
-    private final String ip= "localhost";
-    private final Integer port = 9050;
+    private  String ip= "localhost";
+    private  Integer port = 9050;
     
     //required args constructor
-    public ModbusClient(String ip, Integer port){
+    public ModbusClient(){
         //this.ip = ip;
         //this.port = port;
     }
     
-    public void writeLongBitsStringToRegisters(int offset,String value){
-       
-    }
+
     public void writeStringToRegisters(int offset, String value){
        
+    }
+    public void writeBitsStringToRegisters(int offset,String value){
+        
     }
     public String readStringFromRegisters(int offset, int count){
        return "";
     }
     public String readBitsFromRegisters(int offset, int count){
        return "";
-    }
-    public void writeSixteenBitsStringToRegisters(int offset,String value){
-        
     }
 
 

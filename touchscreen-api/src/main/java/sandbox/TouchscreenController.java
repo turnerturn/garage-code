@@ -3,8 +3,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jms.annotation.JmsListener;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,7 +14,6 @@ public class TouchscreenController {
  
     private final ModbusClient modbusClient;
 
-
     public TouchscreenController(ModbusClient modbusClient) {
         this.modbusClient = modbusClient;
     }
@@ -23,7 +21,7 @@ public class TouchscreenController {
     public String write(@RequestBody List<TouchscreenVariableDto> variables)
             throws BadDataException {
         for (TouchscreenVariableDto variable : variables) {
-            writeTouchscreenVariables(variable.getName(), variable.getValue());
+            writeTouchscreenVariables(variable);
         }
         return "ok";
     }
@@ -31,7 +29,7 @@ public class TouchscreenController {
     @PostMapping("/api/touchscreen/variables/read")
     public List<TouchscreenVariableDto> read(@RequestBody List<TouchscreenVariableDto> variables)  throws BadDataException {
         for (TouchscreenVariableDto variable : variables) {
-            variable.setValue(readTouchscreenVariables(variable.getName(), variable.getValue()));
+            variable.setValue(readTouchscreenVariables(variable));
         }
         return variables;
     }
@@ -43,11 +41,13 @@ public class TouchscreenController {
     // @SendTo to the method declaration.
     @SendTo("touchscreen-variables-download-broadcast")
     @JmsListener(destination = "touchscreen-variables-download", containerFactory = "myFactory")
-    public String readTouchscreenVariables(@Header("VARIABLE_NAME") String variableName,
-            @Payload String variableValue) throws BadDataException {
+    public String readTouchscreenVariables(Message<TouchscreenVariableDto> msg) throws BadDataException {
+        return readTouchscreenVariables(msg.getPayload());
+    }
+     public String readTouchscreenVariables(TouchscreenVariableDto dto) throws BadDataException {
    
-        TouchscreenVariable variable = findTouchscreenVariableByName(variableName)
-                .orElseThrow(() -> new BadDataException("variable not configured for " + variableName));
+        TouchscreenVariable variable = findTouchscreenVariableByName(dto.getName())
+                .orElseThrow(() -> new BadDataException("variable not configured for " + dto.getName()));
         if (variable.getIoAddress() == null || variable.getIoAddress().isEmpty()) {
             throw new BadDataException(
                     "ioAddress is not configured for variable.  (variable=" + variable.getName() + ")");
@@ -75,11 +75,12 @@ public class TouchscreenController {
         return variable.getValue();
     }
 
-    // find this from TouchscreenMemory
+    // TODO add this to TouchscreenMemory.java 
+    //find this from TouchscreenMemory
     private Optional<TouchscreenVariable> findTouchscreenVariableByName(String name) {
         return Optional.ofNullable(new TouchscreenVariable("VAR_1", "", "STRING", "40000.240H", 240));
     }
-
+// TODO add this to TouchscreenMemory.java 
     private int deriveRegisterOffsetFromIoAddress(String ioAddress) {
         return (ioAddress.indexOf(".") > -1) ? Integer.parseInt(ioAddress.substring(0, ioAddress.indexOf(".")))
                 : Integer.parseInt(ioAddress);
@@ -87,25 +88,22 @@ public class TouchscreenController {
 
     @SendTo("touchscreen-variables-upload-broadcast")
     @JmsListener(destination = "touchscreen-variables-upload", containerFactory = "myFactory")
-    public String writeTouchscreenVariables(@Header("VARIABLE_NAME") String variableName, @Payload String variableValue)
+    public String writeTouchscreenVariables( TouchscreenVariableDto dto)
             throws BadDataException {
-        TouchscreenVariable variable = findTouchscreenVariableByName(variableName)
-                .orElseThrow(() -> new BadDataException("variable not configured for " + variableName));
-        variable.setValue(variableValue);
+        TouchscreenVariable variable = findTouchscreenVariableByName(dto.getName())
+                .orElseThrow(() -> new BadDataException("variable not configured for " + dto.getName()));
+        variable.setValue(dto.getName());
 
         int offset = deriveRegisterOffsetFromIoAddress(variable.getIoAddress());
 
         if (variable.getIoAddress() == null || variable.getIoAddress().isEmpty()) {
-            throw new BadDataException(
-                    "ioAddress is not configured for variable.  (variable=" + variable.getName() + ")");
+            throw new BadDataException("ioAddress is not configured for variable.  (variable=" + variable.getName() + ")");
         }
         if (variable.getMaxCount() == null) {
-            throw new BadDataException(
-                    "maxBits is not configured for variable.  (variable=" + variable.getName() + ")");
+            throw new BadDataException("maxBits is not configured for variable.  (variable=" + variable.getName() + ")");
         }
         if (variable.getDataType() == null) {
-            throw new BadDataException(
-                    "dataType is not configured for variable.  (variable=" + variable.getName() + ")");
+            throw new BadDataException("dataType is not configured for variable.  (variable=" + variable.getName() + ")");
         }
         if (variable.getValue() == null) {
             variable.setValue("");
@@ -122,10 +120,8 @@ public class TouchscreenController {
         if ("STRING".equalsIgnoreCase(variable.getDataType())) {
             if (variable.getMaxCount() < variable.getValue().length()) {
                 // truncuate variable value from 0 to variable.getMaxCount()
-                // this truncuated string ensures we stay within the alloted space of our modbus
-                // registers.
-                // refactor with caution. This could unexpectedly change the value of registers
-                // outside the scope of this variable.
+                // this truncuated string ensures we stay within the alloted space of our modbus  registers.
+                // refactor with caution. This could unexpectedly change the value of registers outside the scope of this variable.
                 variable.setValue(variable.getValue().substring(0, variable.getMaxCount()));
             }
             // pad right with spaces if string is less than maxBits.
@@ -134,30 +130,26 @@ public class TouchscreenController {
             }
             modbusClient.writeStringToRegisters(offset, variable.getValue());
         } else if (variable.getValue().length() == 32) {
-            // we are dealing with a string value of 32 bits or 16 bits.
-            modbusClient.writeLongBitsStringToRegisters(offset, variable.getValue());
-        } else {
-            // we are dealing with a string of bits representing a BitVector (16 bits).
-            // convert the first sixteen bits of this string to bytes.
-            // pad right with 0's if string is less than 16 bits.
-            // ignore bits after the 16th character
-            modbusClient.writeSixteenBitsStringToRegisters(offset, variable.getValue());
+            // we should be dealing with a string value of 32 bits or 16 bits.
+            //if != 32 then we will write the first 16 bits from this string to register at offset.
+            //Else: then we are likely handling bits for a long value.  We will write to 2 registers starting at offset.
+            modbusClient.writeBitsStringToRegisters(offset, variable.getValue());
         }
-        return variableValue;
+        return dto.getValue();
     }
 
     // This will be used if JmsReplyTo is not set on message received from
     // touchscreen-memory-downloads
     @JmsListener(destination = "touchscreen-variables-download-broadcast", containerFactory = "myFactory")
-    public void broadcastedTouchscreenDownloadMessages(@Header("VARIABLE_NAME") String variableName,@Payload String variableValue) {
-       System.out.println("broadcastedTouchscreenDownloadMessages("+ variableName + "," +variableValue+")");
+    public void broadcastedTouchscreenDownloadMessages( Message<TouchscreenVariableDto> msg) throws BadDataException {
+       System.out.println("broadcastedTouchscreenDownloadMessages("+ msg.getPayload()+")");
     }
 
     // This will be used if JmsReplyTo is not set on message received from
     // touchscreen-memory-uploads
     @JmsListener(destination = "touchscreen-variables-upload-broadcast", containerFactory = "myFactory")
-    public void broadcastedTouchscreenUploadMessages(@Header("VARIABLE_NAME") String variableName, @Payload String variableValue) {
-        System.out.println("broadcastedTouchscreenUploadMessages("+ variableName + "," +variableValue+")");
+    public void broadcastedTouchscreenUploadMessages( TouchscreenVariableDto variable) {
+        System.out.println("broadcastedTouchscreenUploadMessages("+ variable+")");
     }
 }
 
