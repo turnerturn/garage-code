@@ -52,13 +52,6 @@ HikariCP is a lightweight and high-performing JDBC connection pool used in Sprin
 ### 7. **Database-Specific Adjustments**
    - Tailor settings such as maximum pool size, idle timeout, and validation queries to your database system (PostgreSQL, MySQL, etc.).
 
-### 8. **Monitoring and Metrics**
-   - Leverage HikariCP metrics with Micrometer to monitor connection pool health.
-   - Example Spring Boot setup:
-     ```groovy
-     implementation 'io.micrometer:micrometer-core'
-     implementation 'io.micrometer:micrometer-registry-prometheus'
-     ```
 
 ---
 
@@ -89,11 +82,71 @@ HikariCP is a lightweight and high-performing JDBC connection pool used in Sprin
 4. **Use Read Replicas:** For read-heavy workloads, distribute queries across read replicas.
 5. **Upgrade Dependencies:** Ensure you're using the latest stable version of HikariCP for bug fixes and performance improvements.
 
+
+## Getting Started
+- Add the following dependencies to your build.gradle.
+```text
+    implementation 'org.springframework.boot:spring-boot-starter:3.1.0'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.1.0'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.1.0'
+```
+
+- Add the following contents to your spring component's datasource configuration.  Adjust package accordingly...
+```java
+package com.example.demo;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import com.zaxxer.hikari.HikariDataSource;
+
+@Configuration
+public class DatasourceConfiguration {
+
+    /**
+     * Creates a DataSourceProperties bean configured with properties prefixed with
+     * "app.datasource".
+     * 
+     * @return a DataSourceProperties object
+     */
+
+    @Bean
+    @ConfigurationProperties("app.datasource")
+    public DataSourceProperties dataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    /**
+     * Creates a HikariDataSource bean configured with properties prefixed with
+     * "app.datasource.configuration".
+     * 
+     * <p>
+     * You can easily initialize a DataSourceBuilder from the state of any DataSourceProperties object.
+     * This allows you to inject the DataSource that Spring Boot creates automatically.  
+     * However, that would split your configuration into two namespaces: url,
+     * username, password, type, and driver
+     * on spring.datasource and the rest on your custom namespace (app.datasource).
+     *
+     * To avoid that, you can redefine a custom DataSourceProperties on your custom
+     * namespace, as shown in the following example:
+     * </p> 
+     * @param properties the DataSourceProperties object
+     * @return a HikariDataSource object
+     */
+    @Bean
+    @ConfigurationProperties("app.datasource.configuration")
+    public HikariDataSource dataSource(DataSourceProperties properties) {
+        return properties.initializeDataSourceBuilder().type(HikariDataSource.class)
+                .build();
+    }
+
+}
+
+```
 ---
 
 ## References
-- [Maximizing HikariCP Performance in Spring Boot Applications](https://medium.com/@mukitulislamratul/maximizing-hikaricp-performance-in-spring-boot-applications-f7ee8474410a)
 - [HikariCP Official Documentation](https://github.com/brettwooldridge/HikariCP)
-- [Spring Boot HikariCP Configuration](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#data.sql.datasource.hikari)
+- [Spring Boot Data Access](https://docs.spring.io/spring-boot/docs/2.0.x/reference/html/howto-data-access.html)
 
 ---
